@@ -468,12 +468,13 @@ export default function Home() {
         <h2 className="text-sm font-bold text-gray-300 mb-3">💴 おつり管理</h2>
         <div className="flex gap-2 mb-2">
           <input
-            type="number"
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
             value={cashAmount}
-            onChange={(e) => setCashAmount(e.target.value)}
+            onChange={(e) => setCashAmount(e.target.value.replace(/[^0-9]/g, ""))}
             className="flex-1 bg-gray-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             placeholder="金額（円）"
-            min="1"
             onKeyDown={(e) => e.key === "Space" && e.stopPropagation()}
           />
           <input
