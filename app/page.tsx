@@ -481,6 +481,59 @@ export default function Home() {
         </button>
       </div>
 
+      {/* 時間帯別集計 */}
+      {state.sales.length > 0 && (() => {
+        const byHour: Record<number, number> = {};
+        state.sales.forEach((s) => {
+          const h = new Date(s.timestamp).getHours();
+          byHour[h] = (byHour[h] ?? 0) + 1;
+        });
+        const hours = Object.keys(byHour).map(Number).sort((a, b) => a - b);
+        return (
+          <div className="bg-gray-800 rounded-xl p-4 mt-4">
+            <h2 className="text-sm font-bold text-gray-300 mb-2">🕐 時間帯別</h2>
+            <div className="space-y-1">
+              {hours.map((h) => (
+                <div key={h} className="flex items-center gap-2">
+                  <span className="text-gray-400 text-xs w-12 shrink-0">{h}時台</span>
+                  <div className="flex-1 bg-gray-700 rounded-full h-2 overflow-hidden">
+                    <div
+                      className="bg-blue-500 h-2 rounded-full"
+                      style={{ width: `${(byHour[h] / state.sales.length) * 100}%` }}
+                    />
+                  </div>
+                  <span className="text-white text-xs font-bold w-8 text-right shrink-0">
+                    {byHour[h]}本
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* 全販売ログ */}
+      {state.sales.length > 0 && (
+        <div className="bg-gray-800 rounded-xl p-4 mt-4 mb-4">
+          <h2 className="text-sm font-bold text-gray-300 mb-2">
+            📋 全ログ（{state.sales.length}件）
+          </h2>
+          <div className="h-40 overflow-y-auto space-y-1 pr-1">
+            {[...state.sales].reverse().map((s) => {
+              const d = new Date(s.timestamp);
+              const pad = (n: number) => String(n).padStart(2, "0");
+              const time = `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+              return (
+                <div key={s.id} className="flex justify-between text-xs text-gray-400 py-0.5 border-b border-gray-700">
+                  <span className="text-gray-500">#{s.id}</span>
+                  <span>{time}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {showResetConfirm && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
           <div className="bg-gray-800 rounded-2xl p-6 w-full max-w-sm shadow-2xl">
