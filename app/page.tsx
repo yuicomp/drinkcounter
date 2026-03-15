@@ -86,8 +86,7 @@ export default function Home() {
   const [settingsUnlocked, setSettingsUnlocked] = useState(false);
   const [settingsError, setSettingsError] = useState("");
   const [newPrice, setNewPrice] = useState("");
-  // 残高チェック
-  const [showCashCounter, setShowCashCounter] = useState(false);
+  // 残高チェック（常時表示）
   const [cashCounts, setCashCounts] = useState<Record<number, string>>({});
   // CSVインポート
   const [importPreview, setImportPreview] = useState<ImportedData | null>(null);
@@ -381,123 +380,127 @@ export default function Home() {
         )}
       </div>
 
-      {/* アクションボタン 2×2 */}
-      <div className="grid grid-cols-2 gap-3">
+      {/* アクションボタン 3列 */}
+      <div className="grid grid-cols-3 gap-3">
         <button onClick={() => exportCSV(state)} className="bg-green-700 hover:bg-green-600 text-white font-bold py-3 rounded-xl text-sm transition-colors">
-          📥 CSV書き出し
+          📥 書き出し
         </button>
         <button onClick={() => fileInputRef.current?.click()} className="bg-indigo-700 hover:bg-indigo-600 text-white font-bold py-3 rounded-xl text-sm transition-colors">
           📂 インポート
-        </button>
-        <button onClick={() => { setShowCashCounter(true); setCashCounts({}); }} className="bg-yellow-700 hover:bg-yellow-600 text-white font-bold py-3 rounded-xl text-sm transition-colors">
-          💰 残高チェック
         </button>
         <button onClick={() => { setShowResetConfirm(true); setResetPasswordInput(""); setResetError(false); }} className="bg-red-800 hover:bg-red-700 text-white font-bold py-3 rounded-xl text-sm transition-colors">
           🗑 リセット
         </button>
       </div>
 
-      {/* 時間帯別集計 */}
-      {state.sales.length > 0 && (() => {
-        const byHour: Record<number, number> = {};
-        state.sales.forEach((s) => { const h = new Date(s.timestamp).getHours(); byHour[h] = (byHour[h] ?? 0) + 1; });
-        const hours = Object.keys(byHour).map(Number).sort((a, b) => a - b);
-        return (
-          <div className="bg-gray-800 rounded-xl p-4 mt-4">
-            <h2 className="text-sm font-bold text-gray-300 mb-2">🕐 時間帯別</h2>
-            <div className="space-y-1">
-              {hours.map((h) => (
-                <div key={h} className="flex items-center gap-2">
-                  <span className="text-gray-400 text-xs w-12 shrink-0">{h}時台</span>
-                  <div className="flex-1 bg-gray-700 rounded-full h-2 overflow-hidden">
-                    <div className="bg-blue-500 h-2 rounded-full" style={{ width: `${(byHour[h] / state.sales.length) * 100}%` }} />
-                  </div>
-                  <span className="text-white text-xs font-bold w-8 text-right shrink-0">{byHour[h]}本</span>
+      {/* ===== 2カラム：全ログ ＋ 残高チェック ===== */}
+      <div className="grid grid-cols-2 gap-3 mt-4 mb-4">
+
+        {/* 左：時間帯別 ＋ 全ログ */}
+        <div className="bg-gray-800 rounded-xl p-3 flex flex-col gap-3">
+          {/* 時間帯別 */}
+          {state.sales.length > 0 ? (() => {
+            const byHour: Record<number, number> = {};
+            state.sales.forEach((s) => { const h = new Date(s.timestamp).getHours(); byHour[h] = (byHour[h] ?? 0) + 1; });
+            const hours = Object.keys(byHour).map(Number).sort((a, b) => a - b);
+            return (
+              <div>
+                <p className="text-xs font-bold text-gray-300 mb-1">🕐 時間帯別</p>
+                <div className="space-y-1">
+                  {hours.map((h) => (
+                    <div key={h} className="flex items-center gap-1">
+                      <span className="text-gray-400 text-xs w-9 shrink-0">{h}時台</span>
+                      <div className="flex-1 bg-gray-700 rounded-full h-1.5 overflow-hidden">
+                        <div className="bg-blue-500 h-1.5 rounded-full" style={{ width: `${(byHour[h] / state.sales.length) * 100}%` }} />
+                      </div>
+                      <span className="text-white text-xs font-bold w-7 text-right shrink-0">{byHour[h]}本</span>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              </div>
+            );
+          })() : (
+            <p className="text-gray-600 text-xs">まだ販売なし</p>
+          )}
+
+          {/* 全ログ */}
+          <div>
+            <p className="text-xs font-bold text-gray-300 mb-1">
+              📋 全ログ{state.sales.length > 0 && `（${state.sales.length}件）`}
+            </p>
+            <div className="h-48 overflow-y-auto space-y-0.5 pr-1">
+              {state.sales.length === 0 ? (
+                <p className="text-gray-600 text-xs">記録なし</p>
+              ) : (
+                [...state.sales].reverse().map((s) => {
+                  const d = new Date(s.timestamp);
+                  const pad = (n: number) => String(n).padStart(2, "0");
+                  const time = `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+                  return (
+                    <div key={s.id} className="flex justify-between text-xs text-gray-400 py-0.5 border-b border-gray-700/60">
+                      <span className="text-gray-600">#{s.id}</span>
+                      <span>{time}</span>
+                    </div>
+                  );
+                })
+              )}
             </div>
           </div>
-        );
-      })()}
+        </div>
 
-      {/* 全販売ログ */}
-      {state.sales.length > 0 && (
-        <div className="bg-gray-800 rounded-xl p-4 mt-4 mb-4">
-          <h2 className="text-sm font-bold text-gray-300 mb-2">📋 全ログ（{state.sales.length}件）</h2>
-          <div className="h-40 overflow-y-auto space-y-1 pr-1">
-            {[...state.sales].reverse().map((s) => {
-              const d = new Date(s.timestamp);
-              const pad = (n: number) => String(n).padStart(2, "0");
-              const time = `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+        {/* 右：残高チェック（常時表示） */}
+        <div className="bg-gray-800 rounded-xl p-3 flex flex-col">
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-xs font-bold text-gray-300">💰 残高チェック</p>
+            <button onClick={() => setCashCounts({})} className="text-xs text-gray-500 hover:text-gray-300">クリア</button>
+          </div>
+          <p className="text-xs text-gray-500 mb-2">
+            期待値: <span className="text-yellow-400 font-bold">¥{fmt(vaultBalance)}</span>
+          </p>
+
+          <div className="space-y-1 flex-1">
+            {DENOMINATIONS.map((d) => {
+              const count = parseInt(cashCounts[d.value] || "0") || 0;
+              const sub = d.value * count;
               return (
-                <div key={s.id} className="flex justify-between text-xs text-gray-400 py-0.5 border-b border-gray-700">
-                  <span className="text-gray-500">#{s.id}</span>
-                  <span>{time}</span>
+                <div key={d.value} className="flex items-center gap-1">
+                  <span className="text-gray-400 text-xs w-14 shrink-0 tabular-nums">{d.label.trim()}</span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    value={cashCounts[d.value] ?? ""}
+                    onChange={(e) => setCashCounts((c) => ({ ...c, [d.value]: numericOnly(e.target.value) }))}
+                    onKeyDown={(e) => e.key === "Space" && e.stopPropagation()}
+                    className="w-10 bg-gray-700 text-white text-right rounded px-1 py-0.5 text-xs focus:outline-none focus:ring-1 focus:ring-yellow-500"
+                    placeholder="0"
+                  />
+                  <span className="text-xs text-gray-500 shrink-0">枚</span>
+                  <span className="flex-1 text-right text-xs text-gray-400 tabular-nums">
+                    {sub > 0 ? `¥${fmt(sub)}` : ""}
+                  </span>
                 </div>
               );
             })}
           </div>
+
+          <div className="border-t border-gray-600 pt-2 mt-2 space-y-1">
+            <div className="flex justify-between text-xs font-bold">
+              <span className="text-gray-300">合計</span>
+              <span className="text-white">¥{fmt(cashCountTotal)}</span>
+            </div>
+            <div className="flex justify-between text-xs font-bold">
+              <span className="text-gray-300">差額</span>
+              <span className={cashCountTotal - vaultBalance === 0 ? "text-green-400" : "text-red-400"}>
+                {cashCountTotal - vaultBalance >= 0 ? "+" : ""}¥{fmt(cashCountTotal - vaultBalance)}
+              </span>
+            </div>
+          </div>
         </div>
-      )}
+      </div>
 
       {/* hidden file input */}
       <input ref={fileInputRef} type="file" accept=".csv" className="hidden" onChange={handleFileChange} />
-
-      {/* ===== 残高チェックモーダル ===== */}
-      {showCashCounter && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
-          <div className="bg-gray-800 rounded-2xl p-5 w-full max-w-sm shadow-2xl">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-lg font-bold">💰 残高チェック</h2>
-              <button onClick={() => setShowCashCounter(false)} className="text-gray-400 hover:text-white text-xl leading-none">×</button>
-            </div>
-            <div className="text-xs text-gray-500 text-right mb-2">期待値: <span className="text-yellow-400 font-bold">¥{fmt(vaultBalance)}</span></div>
-
-            <div className="space-y-1 mb-3">
-              {DENOMINATIONS.map((d) => {
-                const count = parseInt(cashCounts[d.value] || "0") || 0;
-                const sub = d.value * count;
-                return (
-                  <div key={d.value} className="flex items-center gap-2">
-                    <span className="text-gray-300 text-xs font-mono w-20 shrink-0">{d.label}</span>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      pattern="[0-9]*"
-                      value={cashCounts[d.value] ?? ""}
-                      onChange={(e) => setCashCounts((c) => ({ ...c, [d.value]: numericOnly(e.target.value) }))}
-                      onKeyDown={(e) => e.key === "Space" && e.stopPropagation()}
-                      className="w-16 bg-gray-700 text-white text-right rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-                      placeholder="0"
-                    />
-                    <span className="text-xs text-gray-400 w-5 shrink-0">枚</span>
-                    <span className="flex-1 text-right text-xs text-gray-300 tabular-nums">
-                      {sub > 0 ? `¥${fmt(sub)}` : ""}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="border-t border-gray-600 pt-2 space-y-1">
-              <div className="flex justify-between text-sm font-bold">
-                <span>合計</span>
-                <span className="text-white">¥{fmt(cashCountTotal)}</span>
-              </div>
-              <div className="flex justify-between text-sm font-bold">
-                <span>差額</span>
-                <span className={cashCountTotal - vaultBalance === 0 ? "text-green-400" : "text-red-400"}>
-                  {cashCountTotal - vaultBalance >= 0 ? "+" : ""}¥{fmt(cashCountTotal - vaultBalance)}
-                </span>
-              </div>
-            </div>
-
-            <button onClick={() => setShowCashCounter(false)} className="w-full mt-4 bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 rounded-lg transition-colors">
-              閉じる
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* ===== CSVインポート確認モーダル ===== */}
       {importPreview && (
