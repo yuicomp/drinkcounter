@@ -1,4 +1,68 @@
-import { AppState } from "./types";
+import { AppState, SaleRecord, CashOperation } from "./types";
+
+export type ImportedData = {
+  drinkPrice: number;
+  initialCash: number;
+  sales: SaleRecord[];
+  cashOperations: CashOperation[];
+};
+
+export function parseImportCSV(content: string): ImportedData | null {
+  const text = content.startsWith("\uFEFF") ? content.slice(1) : content;
+  const lines = text.split(/\r?\n/);
+
+  let section = "";
+  let drinkPrice = 0;
+  let initialCash = 0;
+  const sales: SaleRecord[] = [];
+  const cashOperations: CashOperation[] = [];
+  let opId = 1;
+
+  for (const line of lines) {
+    const t = line.trim();
+    if (!t) continue;
+    if (t === "=== サマリー ===") { section = "summary"; continue; }
+    if (t === "=== 販売ログ ===") { section = "sales"; continue; }
+    if (t === "=== 金銭操作ログ ===") { section = "cash"; continue; }
+
+    if (section === "summary") {
+      if (t.startsWith("単価,")) drinkPrice = parseInt(t.replace("単価,¥", ""));
+      if (t.startsWith("初期金庫金額,")) initialCash = parseInt(t.replace("初期金庫金額,¥", ""));
+    }
+
+    if (section === "sales") {
+      const idx = t.indexOf(",");
+      if (idx === -1) continue;
+      const id = parseInt(t.slice(0, idx));
+      if (isNaN(id)) continue;
+      const ts = parseDateStr(t.slice(idx + 1));
+      if (ts) sales.push({ id, timestamp: ts });
+    }
+
+    if (section === "cash") {
+      const m = t.match(/^(補充|回収),¥(\d+),"([^"]*)",(.+)$/);
+      if (m) {
+        const ts = parseDateStr(m[4]);
+        cashOperations.push({
+          id: opId++,
+          type: m[1] === "補充" ? "add" : "remove",
+          amount: parseInt(m[2]),
+          note: m[3],
+          timestamp: ts || new Date().toISOString(),
+        });
+      }
+    }
+  }
+
+  if (drinkPrice <= 0) return null;
+  return { drinkPrice, initialCash, sales, cashOperations };
+}
+
+function parseDateStr(s: string): string | null {
+  const m = s.trim().match(/^(\d{4})\/(\d{2})\/(\d{2}) (\d{2}):(\d{2}):(\d{2})$/);
+  if (!m) return null;
+  return new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]).toISOString();
+}
 
 export function exportCSV(state: AppState): void {
   const rows: string[] = [];
